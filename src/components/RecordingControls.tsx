@@ -23,7 +23,8 @@ const RecordingControls = ({
       <Button
         onClick={onStart}
         size="lg"
-        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg"
+        className="gap-2 shadow-lg"
+        aria-label="Start Recording"
       >
         <Mic className="h-5 w-5" />
         Start Recording
@@ -38,6 +39,7 @@ const RecordingControls = ({
         size="lg"
         variant="secondary"
         className="gap-2"
+        aria-label={isPaused ? "Resume Recording" : "Pause Recording"}
       >
         {isPaused ? (
           <>
@@ -56,6 +58,7 @@ const RecordingControls = ({
         size="lg"
         variant="destructive"
         className="gap-2"
+        aria-label="Stop Recording"
       >
         <Square className="h-5 w-5" />
         Stop

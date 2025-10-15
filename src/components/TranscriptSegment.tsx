@@ -4,10 +4,18 @@ interface TranscriptSegmentProps {
   speaker: string;
   text: string;
   timestamp: string;
-  speakerColor: string;
+  speakerIndex: number;
 }
 
-const TranscriptSegment = ({ speaker, text, timestamp, speakerColor }: TranscriptSegmentProps) => {
+const SPEAKER_COLORS = [
+  'bg-[hsl(var(--speaker-1))]',
+  'bg-[hsl(var(--speaker-2))]',
+  'bg-[hsl(var(--speaker-3))]',
+  'bg-[hsl(var(--speaker-4))]',
+];
+
+const TranscriptSegment = ({ speaker, text, timestamp, speakerIndex }: TranscriptSegmentProps) => {
+  const speakerColor = SPEAKER_COLORS[speakerIndex % SPEAKER_COLORS.length];
   return (
     <div className="flex gap-4 p-4 hover:bg-muted/50 transition-colors rounded-lg group">
       <Avatar className={`h-10 w-10 ${speakerColor} flex-shrink-0`}>

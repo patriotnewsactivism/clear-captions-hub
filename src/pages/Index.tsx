@@ -7,41 +7,32 @@ import RecordingControls from "@/components/RecordingControls";
 import WaveformVisualizer from "@/components/WaveformVisualizer";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
 
 interface TranscriptItem {
   id: string;
   speaker: string;
   text: string;
   timestamp: string;
-  speakerColor: string;
+  speakerIndex: number;
 }
-
-const SPEAKER_COLORS = [
-  'bg-[hsl(var(--speaker-1))]',
-  'bg-[hsl(var(--speaker-2))]',
-  'bg-[hsl(var(--speaker-3))]',
-  'bg-[hsl(var(--speaker-4))]',
-];
 
 const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<AudioRecorder | null>(null);
   const speakerCountRef = useRef(0);
   const { toast } = useToast();
-
-  const getNextSpeakerColor = () => {
-    const color = SPEAKER_COLORS[speakerCountRef.current % SPEAKER_COLORS.length];
-    speakerCountRef.current += 1;
-    return color;
-  };
 
   const handleAudioData = async (audioBlob: Blob) => {
     if (isPaused) return;
 
     setIsTranscribing(true);
+    setError(null);
     
     try {
       // Convert blob to base64
@@ -55,29 +46,32 @@ const Index = () => {
           body: { audio: base64Audio }
         });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
 
         if (data.text && data.text.trim()) {
           const newTranscript: TranscriptItem = {
             id: Date.now().toString(),
-            speaker: `Speaker ${Math.floor(speakerCountRef.current / 2) + 1}`,
+            speaker: `Speaker ${speakerCountRef.current + 1}`,
             text: data.text,
             timestamp: new Date().toLocaleTimeString('en-US', { 
               hour: '2-digit', 
               minute: '2-digit',
               second: '2-digit'
             }),
-            speakerColor: getNextSpeakerColor(),
+            speakerIndex: speakerCountRef.current,
           };
-
+          
           setTranscripts(prev => [...prev, newTranscript]);
+          speakerCountRef.current +=1;
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Transcription error:', error);
+      const errorMessage = error.message || "Failed to transcribe audio. Please try again.";
+      setError(errorMessage);
       toast({
         title: "Transcription Error",
-        description: "Failed to transcribe audio. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -91,7 +85,9 @@ const Index = () => {
       await recorderRef.current.start();
       setIsRecording(true);
       setIsPaused(false);
+      setTranscripts([]);
       speakerCountRef.current = 0;
+      setError(null)
       
       toast({
         title: "Recording Started",
@@ -99,9 +95,11 @@ const Index = () => {
       });
     } catch (error) {
       console.error('Failed to start recording:', error);
+      const errorMessage = "Could not access microphone. Please check permissions.";
+      setError(errorMessage);
       toast({
         title: "Recording Failed",
-        description: "Could not access microphone. Please check permissions.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -173,7 +171,7 @@ const Index = () => {
                   <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
                   <span className="text-sm font-medium">
                     {isPaused ? 'Paused' : 'Recording'}
-                    {isTranscribing && ' â€¢ Transcribing...'}
+                    {isTranscribing && ' • Transcribing...'}
                   </span>
                 </div>
               )}
@@ -197,11 +195,25 @@ const Index = () => {
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4 text-foreground">Transcript</h2>
           <ScrollArea className="h-[500px] pr-4">
-            {transcripts.length === 0 ? (
+            {error && (
+              <Alert variant="destructive">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {transcripts.length === 0 && !isRecording && !error && (
               <div className="text-center text-muted-foreground py-12">
-                <p>Start recording to see your transcript here</p>
+                <p className="mb-2">Welcome! Click "Start Recording" to begin.</p>
+                <p className="text-xs">Your live transcript will appear here.</p>
               </div>
-            ) : (
+            )}
+            {transcripts.length === 0 && isRecording && !error && (
+              <div className="text-center text-muted-foreground py-12">
+                <p>Listening...</p>
+              </div>
+            )}
+            {transcripts.length > 0 && (
               <div className="space-y-2">
                 {transcripts.map((transcript) => (
                   <TranscriptSegment
@@ -209,7 +221,7 @@ const Index = () => {
                     speaker={transcript.speaker}
                     text={transcript.text}
                     timestamp={transcript.timestamp}
-                    speakerColor={transcript.speakerColor}
+                    speakerIndex={transcript.speakerIndex}
                   />
                 ))}
               </div>
